@@ -111,6 +111,8 @@ function App() {
     console.log('***createSmartSession6', {compressedSessionData})
     localStorage.setItem(`compressedSessionData:${nexusClient.account.address}`, compressedSessionData)
     console.log('***createSmartSession7')
+    setSessionData(sessionData)
+    console.log('***createSmartSession8')
   }
 
   const executeSmartSession = async (sessionData:any, functionName:String) => {
