@@ -222,7 +222,7 @@ function App() {
         <div>
           status: {account.status}
           <br />
-          addresses: {JSON.stringify(account.addresses)}
+          owner addresses: {JSON.stringify(account.addresses)}
           <br />
           chainId: {account.chainId}
           <br />
@@ -236,16 +236,6 @@ function App() {
             Disconnect
           </button>
         )}
-        <h5>Txs</h5>
-          <ul>
-            {
-              txHashes.map(tx => {
-                console.log('**txhashes', tx)
-                return (<li>https://sepolia.basescan.org/tx/{tx}</li>)
-              })
-            }
-          </ul>
-
       </div>
 
       <div>
@@ -292,6 +282,17 @@ function App() {
         }}>
           Reveal
         </button>
+      </div>
+      <div>
+      <h5>Txs</h5>
+          <ul>
+            {
+              txHashes.map(tx => {
+                console.log('**txhashes', tx)
+                return (<li>https://sepolia.basescan.org/tx/{tx}</li>)
+              })
+            }
+          </ul>
       </div>
     </>
   )
