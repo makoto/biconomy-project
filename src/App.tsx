@@ -6,6 +6,7 @@ import {
   privateKeyToAccount, generatePrivateKey
 } from "viem/accounts";
 import { SmartSessionMode } from "@rhinestone/module-sdk/module"
+// import { ModuleType } from "@biconomy/account";
 
 // const privateKey = generatePrivateKey();
 // const account2 = privateKeyToAccount(`${privateKey}`);
@@ -14,6 +15,7 @@ import {
   smartSessionUseActions, CreateSessionDataParams, SessionData,
   createNexusSessionClient
 } from "@biconomy/sdk";
+
 import { baseSepolia } from "viem/chains"; 
 import { Hex, encodeFunctionData, parseEther, http } from "viem";
 
@@ -43,8 +45,25 @@ function App() {
       bundlerTransport: http(bundlerUrl),
       paymaster: createBicoPaymasterClient({paymasterUrl})
     })
-
+    // console.log('***1', c.account, account)
+    // console.log('***2', account)
+    // const sessionsModule2 = toSmartSessionsValidator({ 
+    //   account: c.account,
+    //   signer: account
+    // });
+    // console.log({sessionsModule2})
     setNexusClient(c)
+    // isModuleInstalled seems not working
+    // const _sessionsModule = toSmartSessionsValidator({ 
+    //   account: c && c.account,
+    //   signer: account.account
+    // });
+    // console.log('**233', _sessionsModule.module)
+    // const isInstalled = await c.isModuleInstalled({
+    //   type: 4 , // 4: Validator
+    //   moduleAddress: _sessionsModule.module
+    // });
+    // console.log('**234', isInstalled)
     const compressedSessionData = localStorage.getItem(`compressedSessionData:${c.account.address}`) as SessionData
     setSessionData(JSON.parse(compressedSessionData))
   };
