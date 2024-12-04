@@ -22,9 +22,8 @@ import { Hex, encodeFunctionData, parseEther, http } from "viem";
 const chainId = 84532
 const bundlerUrl = `https://bundler.biconomy.io/api/v3/${chainId}/${import.meta.env.VITE_BUNDLER_PAYMASTER_KEY}`;
 const paymasterUrl = `https://paymaster.biconomy.io/api/v2/${chainId}/${import.meta.env.VITE_PAYMASTER_BICONOMY_KEY}`; 
-const sessionOwner = privateKeyToAccount(generatePrivateKey())
-console.log({bundlerUrl, paymasterUrl, sessionOwner})
-const CONTRACT_ADDRESS = "0x017845e4518db01efcafd7acb192af924b432d66"
+console.log({bundlerUrl, paymasterUrl})
+const CONTRACT_ADDRESS = "0x225af9d6e43bf232ffc51a7b6e53ee7b0a0ccbeb"
 function App() {
   const account = useAccount()
   const {data: walletClient} = useWalletClient();
@@ -36,6 +35,7 @@ function App() {
   const [nexusSessionClient, setNexusSessionClient] = useState();
   const [createSessionsResponse, setCreateSessionsResponse] = useState();
   const [sessionData, setSessionData] =  useState();
+  const [sessionOwner, setSessionOwner] =  useState();
 
   const setClient = async (account:any) => {
     const c = await createNexusClient({
@@ -64,6 +64,12 @@ function App() {
     //   moduleAddress: _sessionsModule.module
     // });
     // console.log('**234', isInstalled)
+    var so = localStorage.getItem(`sessionOwner`)
+    if(!so){
+      so = generatePrivateKey()
+      localStorage.setItem(`sessionOwner`, so)
+    }
+    setSessionOwner(privateKeyToAccount(so))
     const compressedSessionData = localStorage.getItem(`compressedSessionData:${c.account.address}`) as SessionData
     setSessionData(JSON.parse(compressedSessionData))
   };
@@ -85,26 +91,34 @@ function App() {
       module: sessionsModule.moduleInitData
     })
     console.log('***installSessionModule3', hash)
-    const { success: installSuccess } = await nexusClient.waitForUserOperationReceipt({ hash });
-    console.log('***installSessionModule4', installSuccess)
+    const { success: installSuccess, receipt } = await nexusClient.waitForUserOperationReceipt({ hash });
+    console.log('***installSessionModule4', installSuccess, receipt)
+    setTxHashes(txHashes.concat(receipt.transactionHash))
     const nsc = nexusClient.extend(smartSessionCreateActions(sessionsModule));
     console.log('***installSessionModule5', nexusSessionClient)
     setNexusSessionClient(nsc)
   }
 
   // Step 5 https://docs.biconomy.io/tutorials/smart-sessions#create-a-smart-session
-  const createSmartSession = async (nexusClient:any, nexusSessionClient:any) => {
+  const createSmartSession = async (nexusClient:any, nexusSessionClient:any, sessionOwner:any) => {
     console.log('***createSmartSession1', nexusSessionClient)
     const sessionPublicKey = sessionOwner.address;
     console.log('***createSmartSession2', sessionPublicKey)
     const sessionRequestedInfo: CreateSessionDataParams[] = [
         {
             sessionPublicKey,
-            actionPoliciesInfo: [{
+            actionPoliciesInfo: [
+            {
                 contractAddress: CONTRACT_ADDRESS, // Replace with your contract address
                 rules: [],
-                functionSelector: "0x37994c11" as Hex // Function selector for 'incrementNumber'
-            }]
+                functionSelector: "0x3c7a3aff" as Hex // Function selector for 'incrementNumber'
+            },
+            {
+              contractAddress: CONTRACT_ADDRESS, // Replace with your contract address
+              rules: [],
+              functionSelector: "0xa475b5dd" as Hex // Function selector for 'incrementNumber'
+            },
+          ]
         }
     ];
     console.log('***createSmartSession3', sessionRequestedInfo)
@@ -112,10 +126,11 @@ function App() {
         sessionRequestedInfo
     });
     console.log('***createSmartSession4', _createSessionsResponse)
-    const { success } = await nexusClient.waitForUserOperationReceipt({ 
+    const { success, receipt } = await nexusClient.waitForUserOperationReceipt({ 
         hash: _createSessionsResponse.userOpHash
     });
-    console.log('***createSmartSession5', success)
+    console.log('***createSmartSession5', success, receipt)
+    setTxHashes(txHashes.concat(receipt.transactionHash))
     setCreateSessionsResponse(_createSessionsResponse)
     // Step 6: https://docs.biconomy.io/tutorials/smart-sessions#create-active-session-data
     const sessionData: SessionData = {
@@ -134,7 +149,7 @@ function App() {
     console.log('***createSmartSession8')
   }
 
-  const executeSmartSession = async (sessionData:any, functionName:String) => {
+  const executeSmartSession = async (sessionData:any, functionName:String, sessionOwner: any) => {
     const smartSessionNexusClient = await createNexusSessionClient({
       chain: baseSepolia,
       accountAddress: sessionData.granter,
@@ -161,17 +176,20 @@ function App() {
                 to: CONTRACT_ADDRESS, // Replace with your target contract address
                 data: encodeFunctionData({
                     abi: [
-                      {
-                        "inputs":[
-                           
-                        ],
-                        "name":"increament1",
-                        "outputs":[
-                           
-                        ],
+                     {
+                        "inputs":[],
+                        "name":"commit",
+                        "outputs":[],
                         "stateMutability":"nonpayable",
                         "type":"function"
-                     }                  
+                     },
+                     {
+                      "inputs":[],
+                      "name":"reveal",
+                      "outputs":[],
+                      "stateMutability":"nonpayable",
+                      "type":"function"
+                     },
                     ],
                     functionName: functionName
                 })
@@ -179,6 +197,9 @@ function App() {
         ]
     });
     console.log(`Transaction hash: ${userOpHash}`);
+    const receipt = await useSmartSessionNexusClient.waitForUserOperationReceipt({ hash: userOpHash });
+    console.log(`receipt: ${userOpHash}`, {receipt});
+    setTxHashes(txHashes.concat(receipt.receipt.transactionHash))
   }
 
   const handleGaslessTransaction = async () => {
@@ -207,7 +228,7 @@ function App() {
           <br />
           sca addresses: {nexusClient && nexusClient.account && (nexusClient.account.address)}
           <br />
-          session owner: {sessionOwner.address}
+          session owner: {sessionOwner && sessionOwner.address}
         </div>
 
         {account.status === 'connected' && (
@@ -242,26 +263,34 @@ function App() {
         <div>{error?.message}</div>
       </div>
       <div>
+        <h2>Gasless Transaction</h2>
         <button
           onClick={handleGaslessTransaction}
         >
           Send Gasless transaction
         </button>
+        <br/>
+        <h2>Smart Session</h2>
         <button type="button" onClick={() => {
           installSessionModule(nexusClient, account)
         }}>
           Install Session Module
         </button>
         <button type="button" onClick={() => {
-          createSmartSession(nexusClient, nexusSessionClient)
+          createSmartSession(nexusClient, nexusSessionClient, sessionOwner)
         }}>
           Create Smart Session
         </button>
-
+        <br/>
         <button type="button" onClick={() => {
-          executeSmartSession(sessionData, 'increament1')
+          executeSmartSession(sessionData, 'commit', sessionOwner)
         }}>
-          Execute Smart Session
+          Commit
+        </button>
+        <button type="button" onClick={() => {
+          executeSmartSession(sessionData, 'reveal', sessionOwner)
+        }}>
+          Reveal
         </button>
       </div>
     </>
