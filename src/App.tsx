@@ -36,7 +36,7 @@ function App() {
   const [createSessionsResponse, setCreateSessionsResponse] = useState();
   const [sessionData, setSessionData] =  useState();
   const [sessionOwner, setSessionOwner] =  useState();
-
+  const [sessionIsInstalled, setSessionIsInstalled] =  useState();
   const setClient = async (account:any) => {
     const c = await createNexusClient({
       signer: account,
@@ -45,7 +45,7 @@ function App() {
       bundlerTransport: http(bundlerUrl),
       paymaster: createBicoPaymasterClient({paymasterUrl})
     })
-    // console.log('***1', c.account, account)
+    console.log('***1', c.account, account)
     // console.log('***2', account)
     // const sessionsModule2 = toSmartSessionsValidator({ 
     //   account: c.account,
@@ -54,16 +54,20 @@ function App() {
     // console.log({sessionsModule2})
     setNexusClient(c)
     // isModuleInstalled seems not working
-    // const _sessionsModule = toSmartSessionsValidator({ 
-    //   account: c && c.account,
-    //   signer: account.account
-    // });
-    // console.log('**233', _sessionsModule.module)
-    // const isInstalled = await c.isModuleInstalled({
-    //   type: 4 , // 4: Validator
-    //   moduleAddress: _sessionsModule.module
-    // });
-    // console.log('**234', isInstalled)
+    console.log('**232')
+    const _sessionsModule = toSmartSessionsValidator({ 
+      account: c && c.account,
+      signer: account.account
+    });
+    console.log('**233', _sessionsModule.module)
+    const isInstalled = await c.isModuleInstalled({
+      module: {
+          address: _sessionsModule.moduleInitData.address,
+          type: _sessionsModule.moduleInitData.type
+      }
+    })
+    console.log('**234', isInstalled)
+    setSessionIsInstalled(isInstalled)
     var so = localStorage.getItem(`sessionOwner`)
     if(!so){
       so = generatePrivateKey()
@@ -229,6 +233,8 @@ function App() {
           sca addresses: {nexusClient && nexusClient.account && (nexusClient.account.address)}
           <br />
           session owner: {sessionOwner && sessionOwner.address}
+          <br />
+          session module: {sessionIsInstalled ? "yes" : "no" }
         </div>
 
         {account.status === 'connected' && (
