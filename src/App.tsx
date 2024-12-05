@@ -1,5 +1,4 @@
 import { useAccount,  useConnect, useDisconnect } from 'wagmi'
-
 import { useWalletClient } from 'wagmi'
 import { useEffect, useState } from 'react';
 import { 
@@ -23,7 +22,8 @@ const chainId = 84532
 const bundlerUrl = `https://bundler.biconomy.io/api/v3/${chainId}/${import.meta.env.VITE_BUNDLER_PAYMASTER_KEY}`;
 const paymasterUrl = `https://paymaster.biconomy.io/api/v2/${chainId}/${import.meta.env.VITE_PAYMASTER_BICONOMY_KEY}`; 
 console.log({bundlerUrl, paymasterUrl})
-const CONTRACT_ADDRESS = "0x225af9d6e43bf232ffc51a7b6e53ee7b0a0ccbeb"
+const CONTRACT_ADDRESS = "0x2741DE702f64161780E08601A7c6ab22B9775f5a"
+const NAMEHASH = "0x0000000000000000000000000000000000000000000000000000000000000001"
 function App() {
   const account = useAccount()
   const {data: walletClient} = useWalletClient();
@@ -115,12 +115,17 @@ function App() {
             {
                 contractAddress: CONTRACT_ADDRESS, // Replace with your contract address
                 rules: [],
-                functionSelector: "0x3c7a3aff" as Hex // Function selector for 'incrementNumber'
+                functionSelector: "0xf14fcbc8" as Hex // commit
             },
             {
               contractAddress: CONTRACT_ADDRESS, // Replace with your contract address
               rules: [],
-              functionSelector: "0xa475b5dd" as Hex // Function selector for 'incrementNumber'
+              functionSelector: "0xe1fa8e84" as Hex // register
+            },
+            {
+              contractAddress: CONTRACT_ADDRESS, // Replace with your contract address
+              rules: [],
+              functionSelector: "0x8e19899e" as Hex // withdraw
             },
           ]
         }
@@ -180,23 +185,105 @@ function App() {
                 to: CONTRACT_ADDRESS, // Replace with your target contract address
                 data: encodeFunctionData({
                     abi: [
-                     {
-                        "inputs":[],
-                        "name":"commit",
-                        "outputs":[],
-                        "stateMutability":"nonpayable",
-                        "type":"function"
-                     },
-                     {
-                      "inputs":[],
-                      "name":"reveal",
-                      "outputs":[],
-                      "stateMutability":"nonpayable",
-                      "type":"function"
-                     },
-                    ],
-                    functionName: functionName
-                })
+                      {
+                         "inputs":[
+                            {
+                               "internalType":"bytes32",
+                               "name":"commitment",
+                               "type":"bytes32"
+                            }
+                         ],
+                         "name":"commit",
+                         "outputs":[
+                            
+                         ],
+                         "stateMutability":"nonpayable",
+                         "type":"function"
+                      },
+                      {
+                         "inputs":[
+                            {
+                               "internalType":"address",
+                               "name":"",
+                               "type":"address"
+                            },
+                            {
+                               "internalType":"bytes32",
+                               "name":"",
+                               "type":"bytes32"
+                            }
+                         ],
+                         "name":"commits",
+                         "outputs":[
+                            {
+                               "internalType":"uint256",
+                               "name":"",
+                               "type":"uint256"
+                            }
+                         ],
+                         "stateMutability":"view",
+                         "type":"function"
+                      },
+                      {
+                         "inputs":[
+                            {
+                               "internalType":"bytes32",
+                               "name":"commitment",
+                               "type":"bytes32"
+                            }
+                         ],
+                         "name":"register",
+                         "outputs":[
+                            
+                         ],
+                         "stateMutability":"payable",
+                         "type":"function"
+                      },
+                      {
+                         "inputs":[
+                            {
+                               "internalType":"address",
+                               "name":"",
+                               "type":"address"
+                            },
+                            {
+                               "internalType":"bytes32",
+                               "name":"",
+                               "type":"bytes32"
+                            }
+                         ],
+                         "name":"registers",
+                         "outputs":[
+                            {
+                               "internalType":"uint256",
+                               "name":"",
+                               "type":"uint256"
+                            }
+                         ],
+                         "stateMutability":"view",
+                         "type":"function"
+                      },
+                      {
+                         "inputs":[
+                            {
+                               "internalType":"bytes32",
+                               "name":"commitment",
+                               "type":"bytes32"
+                            }
+                         ],
+                         "name":"withdraw",
+                         "outputs":[
+                            
+                         ],
+                         "stateMutability":"payable",
+                         "type":"function"
+                      }
+                   ]
+                    ,
+                    functionName: functionName,
+                    args: [NAMEHASH]
+                }),
+                value: functionName === "register" ? parseEther("0.00001") :  BigInt(0)
             }
         ]
     });
@@ -284,9 +371,14 @@ function App() {
           Commit
         </button>
         <button type="button" onClick={() => {
-          executeSmartSession(sessionData, 'reveal', sessionOwner)
+          executeSmartSession(sessionData, 'register', sessionOwner)
         }}>
-          Reveal
+          Register
+        </button>
+        <button type="button" onClick={() => {
+          executeSmartSession(sessionData, 'withdraw', sessionOwner)
+        }}>
+          Withdraw
         </button>
       </div>
       <div>
