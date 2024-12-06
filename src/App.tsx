@@ -151,7 +151,7 @@ function App() {
     console.log('***createSmartSession8')
   }
 
-  const executeSmartSession = async (sessionData:any, functionName:String, sessionOwner: any) => {
+  const executeSmartSession = async (sessionData:any, functionName:String, sessionOwner: any, callbacks:[any]) => {
     const smartSessionNexusClient = await createNexusSessionClient({
       chain: baseSepolia,
       accountAddress: sessionData.granter,
@@ -284,6 +284,7 @@ function App() {
     const receipt = await useSmartSessionNexusClient.waitForUserOperationReceipt({ hash: userOpHash });
     console.log(`receipt: ${userOpHash}`, {receipt});
     setTxHashes(txHashes.concat(receipt.receipt.transactionHash))
+    callbacks.map(cb => cb())
   }
 
   const handleGaslessTransaction = async () => {
@@ -298,11 +299,11 @@ function App() {
     console.log("Transaction receipt: ", { receipt})
   };
   const scaAddress = nexusClient && nexusClient.account && (nexusClient.account.address)
-  const {data:scaBalance} = useBalance({
+  const {data:scaBalance, refetch:refetchScaBalance} = useBalance({
     address: scaAddress,
       chainId:chainId
   })
-  const {data:eoaBalance} = useBalance({
+  const {data:eoaBalance, refetch:refetchEoaBalance} = useBalance({
     address: account.address,
   })
 
@@ -379,12 +380,12 @@ function App() {
           Commit
         </button>
         <button type="button" onClick={() => {
-          executeSmartSession(sessionData, 'register', sessionOwner)
+          executeSmartSession(sessionData, 'register', sessionOwner, [refetchEoaBalance, refetchScaBalance])
         }}>
           Register
         </button>
         <button type="button" onClick={() => {
-          executeSmartSession(sessionData, 'withdraw', sessionOwner)
+          executeSmartSession(sessionData, 'withdraw', sessionOwner, [refetchEoaBalance, refetchScaBalance])
         }}>
           Withdraw
         </button>
