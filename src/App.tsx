@@ -1,4 +1,5 @@
-import { useAccount,  useConnect, useDisconnect } from 'wagmi'
+import { useAccount, useBalance,  useConnect, useDisconnect } from 'wagmi'
+import { extractChain } from 'viem'
 import { useWalletClient } from 'wagmi'
 import { useEffect, useState } from 'react';
 import { 
@@ -10,11 +11,13 @@ import {
   smartSessionUseActions, CreateSessionDataParams, SessionData,
   createNexusSessionClient
 } from "@biconomy/sdk";
-
-import { baseSepolia } from "viem/chains"; 
+import { formatUnits } from 'viem';
+import { baseSepolia, optimismSepolia, sepolia } from "viem/chains"; 
 import { Hex, encodeFunctionData, parseEther, http } from "viem";
 
 const chainId = 84532
+const DEBUG = false
+
 const bundlerUrl = `https://bundler.biconomy.io/api/v3/${chainId}/${import.meta.env.VITE_BUNDLER_PAYMASTER_KEY}`;
 const paymasterUrl = `https://paymaster.biconomy.io/api/v2/${chainId}/${import.meta.env.VITE_PAYMASTER_BICONOMY_KEY}`; 
 console.log({bundlerUrl, paymasterUrl})
@@ -294,24 +297,25 @@ function App() {
     setTxHashes(txHashes.concat(receipt.transactionHash))
     console.log("Transaction receipt: ", { receipt})
   };
-  
+  const scaAddress = nexusClient && nexusClient.account && (nexusClient.account.address)
+  const {data:scaBalance} = useBalance({
+    address: scaAddress,
+      chainId:chainId
+  })
+  const {data:eoaBalance} = useBalance({
+    address: account.address,
+  })
+
+  console.log('**scaBalance', chainId, scaAddress, scaBalance, eoaBalance)
   return (
     <>
       <div>
-        <h2>Account</h2>
-
+        <h2>EOA {account && account.chain && `(${account.chain.name})`}</h2>
         <div>
           status: {account.status}
           <br />
-          owner addresses: {JSON.stringify(account.addresses)}
-          <br />
-          chainId: {account.chainId}
-          <br />
-          sca addresses: {nexusClient && nexusClient.account && (nexusClient.account.address)}
-          <br />
-          session owner: {sessionOwner && sessionOwner.address}
-          <br />
-          session module: {sessionIsInstalled ? "yes" : "no" }
+          owner addresses: {JSON.stringify(account.addresses)}({(formatUnits((eoaBalance && eoaBalance.value) || 0, 18))} ETH)
+          <br />          
         </div>
 
         {account.status === 'connected' && (
@@ -319,30 +323,44 @@ function App() {
             Disconnect
           </button>
         )}
+        <div>
+          <h5>Connect</h5>
+          {connectors.map((connector) => (
+            <button
+              key={connector.uid}
+              onClick={() => connect({ connector })}
+              type="button"
+            >
+              {connector.name}
+            </button>
+          ))}
+          <div>{status}</div>
+          <div>{error?.message}</div>
+        </div>
+
+        <h2>NameChain (Base Sepolia)</h2>
+        <div>
+          sca addresses: {scaAddress} ({(formatUnits((scaBalance && scaBalance.value) || 0, 18))}ETH)
+          <br />
+          session owner: {sessionOwner && sessionOwner.address}
+          <br />
+          session module: {sessionIsInstalled ? "yes" : "no" }
+        </div>
+
       </div>
 
       <div>
-        <h2>Connect</h2>
-        {connectors.map((connector) => (
-          <button
-            key={connector.uid}
-            onClick={() => connect({ connector })}
-            type="button"
-          >
-            {connector.name}
-          </button>
-        ))}
-        <div>{status}</div>
-        <div>{error?.message}</div>
-      </div>
-      <div>
-        <h2>Gasless Transaction</h2>
-        <button
-          onClick={handleGaslessTransaction}
-        >
-          Send Gasless transaction
-        </button>
-        <br/>
+        {DEBUG && (
+          <div>
+            <h2>Gasless Transaction</h2>
+            <button
+              onClick={handleGaslessTransaction}
+            >
+              Send Gasless transaction
+            </button>
+            <br/>
+          </div>
+        )}
         <h2>Smart Session</h2>
         <button type="button" onClick={() => {
           installSessionModule(nexusClient, account)
