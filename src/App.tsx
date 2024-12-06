@@ -59,7 +59,7 @@ function App() {
       account: c && c.account,
       signer: account.account
     });
-    console.log('**233', _sessionsModule.module)
+    console.log('**233', _sessionsModule)
     const isInstalled = await c.isModuleInstalled({
       module: {
           address: _sessionsModule.moduleInitData.address,
@@ -75,7 +75,11 @@ function App() {
     }
     setSessionOwner(privateKeyToAccount(so))
     const compressedSessionData = localStorage.getItem(`compressedSessionData:${c.account.address}`) as SessionData
-    setSessionData(JSON.parse(compressedSessionData))
+    const parsedSessionData = JSON.parse(compressedSessionData)
+    // const sessionInfo = _sessionsModule.getSessionInfo(parsedSessionData.sessionId)
+    // console.log('***sessionInfo', {sessionInfo})
+  
+    setSessionData(parsedSessionData)
   };
   
   useEffect(() => {
@@ -83,6 +87,7 @@ function App() {
   }, [walletClient]); // Empty dependency array means it runs only once when the component mounts
   console.log({nexusClient, nexusSessionClient,createSessionsResponse, sessionData})
   console.log(nexusClient && nexusClient.account && nexusClient.account.address)
+
   // Step 4 https://docs.biconomy.io/tutorials/smart-sessions#install-the-smart-sessions-module
   const installSessionModule = async (nexusClient:any, account:any) => {
     console.log('***installSessionModule1')
@@ -120,7 +125,8 @@ function App() {
             {
               contractAddress: CONTRACT_ADDRESS, // Replace with your contract address
               rules: [],
-              functionSelector: "0xe1fa8e84" as Hex // register
+              functionSelector: "0xe1fa8e84" as Hex, // register
+              valueLimit: parseEther("1.0") // 1 ETH limit per transaction
             },
             {
               contractAddress: CONTRACT_ADDRESS, // Replace with your contract address
