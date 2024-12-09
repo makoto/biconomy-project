@@ -1,4 +1,6 @@
 import { useAccount, useBalance,  useConnect, useDisconnect } from 'wagmi'
+import { usePrice } from '@reservoir0x/relay-kit-hooks'
+
 import { extractChain } from 'viem'
 import { useWalletClient } from 'wagmi'
 import { useEffect, useState } from 'react';
@@ -14,6 +16,8 @@ import {
 import { formatUnits } from 'viem';
 import { baseSepolia, optimismSepolia, sepolia } from "viem/chains"; 
 import { Hex, encodeFunctionData, parseEther, http } from "viem";
+import { getClient, Execute } from "@reservoir0x/relay-sdk";
+import { createClient, convertViemChainToRelayChain, TESTNET_RELAY_API } from '@reservoir0x/relay-sdk'
 
 const chainId = 84532
 const DEBUG = false
@@ -36,6 +40,11 @@ function App() {
   const [sessionData, setSessionData] =  useState();
   const [sessionOwner, setSessionOwner] =  useState();
   const [sessionIsInstalled, setSessionIsInstalled] =  useState();
+  const [quote, setQuote] =  useState();
+  const [relayer, setRelayer] =  useState();
+  const [bridgeTxhashes, setBridgeTxhashes] =  useState([]);
+  const [bridgeCurrentStep, setBridgeCurrentStep] =  useState();
+  
   const setClient = async (account:any) => {
     const c = await createNexusClient({
       signer: account,
@@ -65,15 +74,78 @@ function App() {
     }
     setSessionOwner(privateKeyToAccount(so))
     const compressedSessionData = localStorage.getItem(`compressedSessionData:${c.account.address}`) as SessionData
-    const parsedSessionData = JSON.parse(compressedSessionData)  
+    const parsedSessionData = JSON.parse(compressedSessionData)
     setSessionData(parsedSessionData)
+    console.log(1111,optimismSepolia.id)
+    
+    const relayerClient = createClient({
+      baseApiUrl: TESTNET_RELAY_API,
+      source: "YOUR.SOURCE",
+      chains: [convertViemChainToRelayChain(optimismSepolia), convertViemChainToRelayChain(baseSepolia)]
+    });
+    console.log(1112,relayerClient)
+    const quoteOption = {
+      wallet:account,
+      chainId: optimismSepolia.id, // The chain id to bridge from
+      toChainId: chainId, // The chain id to bridge to
+      tradeType: "EXACT_INPUT",
+      amount: '100000000000000000', // Amount in wei to bridge
+      currency: "0x0000000000000000000000000000000000000000",
+      toCurrency: "0x0000000000000000000000000000000000000000",
+      amount: "10000000000000000", // 0.01 ETH
+      recipient:c.account.address, // A valid address to send the funds to
+    }
+    console.log(1113, quoteOption)
+    const _quote = await relayerClient.actions.getQuote(quoteOption)
+    console.log(1114, {relayerClient, _quote})
+    console.log(11141, {setSessionOwner,setQuote, setRelayer})
+    setQuote(_quote)
+    setRelayer(relayerClient)
+    console.log(11144)
   };
   
   useEffect(() => {
     setClient(walletClient)
   }, [walletClient]); // Empty dependency array means it runs only once when the component mounts
   console.log({nexusClient, nexusSessionClient,createSessionsResponse, sessionData})
-  console.log(nexusClient && nexusClient.account && nexusClient.account.address)
+  console.log(1115, {relayer, quote})
+
+  // const {
+  //   data: price,
+  //   isLoading: isFetchinPrice,
+  //   error: usePriceError
+  // } = usePrice(
+  //   getClient(),
+  //   {
+  //   user: "0xDBBC2C0fe2a1D0fB4056B35a22e543bEb715E7FC",
+  //   originChainId: 1,
+  //   destinationChainId: 10,
+  //   originCurrency: "0x0000000000000000000000000000000000000000",
+  //   destinationCurrency: "0x0000000000000000000000000000000000000000",
+  //   tradeType: "EXACT_INPUT",
+  //   amount: "10000000"
+  //   },
+  // )
+  // console.log('***usePrice2', {
+  //   price,
+  //   isFetchinPrice,
+  //   usePriceError
+  // })
+
+  const bridge = async (quote:any, relayer:any, wallet:any, callbacks:[any]) => {
+    console.log('*****bridge1', {quote, relayer, wallet})
+    relayer.actions.execute({
+      quote,
+      wallet,
+      onProgress: ({steps, fees, breakdown, currentStep, currentStepItem, txHashes:_bridgeTxHashes, details}) => {
+          console.log('***bridge2', {steps, fees, breakdown, currentStep, currentStepItem, _bridgeTxHashes, details})
+          setBridgeCurrentStep(currentStep)
+          setBridgeTxhashes(_bridgeTxHashes)
+          callbacks.map(cb => cb())
+      },
+    })
+  }
+
 
   // Step 4 https://docs.biconomy.io/tutorials/smart-sessions#install-the-smart-sessions-module
   const installSessionModule = async (nexusClient:any, account:any) => {
@@ -315,7 +387,7 @@ function App() {
         <div>
           status: {account.status}
           <br />
-          owner addresses: {JSON.stringify(account.addresses)}({(formatUnits((eoaBalance && eoaBalance.value) || 0, 18))} ETH)
+          owner addresses: {JSON.stringify(account.addresses)}({(Number(formatUnits((eoaBalance && eoaBalance.value) || 0, 18))).toFixed(3)} ETH)
           <br />          
         </div>
 
@@ -339,9 +411,18 @@ function App() {
           <div>{error?.message}</div>
         </div>
 
+        <div>
+        <button type="button" onClick={() => {
+          bridge(quote, relayer, walletClient, [refetchEoaBalance, refetchScaBalance])
+        }}>
+          Bridge
+        </button>
+        {bridgeCurrentStep && (bridgeCurrentStep.action)}
+        </div>
+
         <h2>NameChain (Base Sepolia)</h2>
         <div>
-          sca addresses: {scaAddress} ({(formatUnits((scaBalance && scaBalance.value) || 0, 18))}ETH)
+          sca addresses: {scaAddress} ({(Number(formatUnits((scaBalance && scaBalance.value) || 0, 18)).toFixed(3))}ETH)
           <br />
           session owner: {sessionOwner && sessionOwner.address}
           <br />
@@ -393,6 +474,13 @@ function App() {
       <div>
       <h5>Txs</h5>
           <ul>
+            {
+              bridgeTxhashes.map(tx => {
+                console.log('**txhashes', tx)
+                const explorerUrl = tx.chainId === 84532 ? 'https://sepolia.basescan.org' : 'https://sepolia-optimism.etherscan.io/'
+                return (<li>{explorerUrl}/tx/{tx.txHash}</li>)
+              })
+            }
             {
               txHashes.map(tx => {
                 console.log('**txhashes', tx)
