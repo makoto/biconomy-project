@@ -44,6 +44,7 @@ function App() {
   const [relayer, setRelayer] =  useState();
   const [bridgeTxhashes, setBridgeTxhashes] =  useState([]);
   const [bridgeCurrentStep, setBridgeCurrentStep] =  useState();
+  const [gasslessTo, setGasslessTo] =  useState();
   
   const setClient = async (account:any) => {
     const c = await createNexusClient({
@@ -109,28 +110,6 @@ function App() {
   }, [walletClient]); // Empty dependency array means it runs only once when the component mounts
   console.log({nexusClient, nexusSessionClient,createSessionsResponse, sessionData})
   console.log(1115, {relayer, quote})
-
-  // const {
-  //   data: price,
-  //   isLoading: isFetchinPrice,
-  //   error: usePriceError
-  // } = usePrice(
-  //   getClient(),
-  //   {
-  //   user: "0xDBBC2C0fe2a1D0fB4056B35a22e543bEb715E7FC",
-  //   originChainId: 1,
-  //   destinationChainId: 10,
-  //   originCurrency: "0x0000000000000000000000000000000000000000",
-  //   destinationCurrency: "0x0000000000000000000000000000000000000000",
-  //   tradeType: "EXACT_INPUT",
-  //   amount: "10000000"
-  //   },
-  // )
-  // console.log('***usePrice2', {
-  //   price,
-  //   isFetchinPrice,
-  //   usePriceError
-  // })
 
   const bridge = async (quote:any, relayer:any, wallet:any, callbacks:[any]) => {
     console.log('*****bridge1', {quote, relayer, wallet})
@@ -359,11 +338,12 @@ function App() {
     callbacks.map(cb => cb())
   }
 
-  const handleGaslessTransaction = async () => {
+  const handleGaslessTransaction = async (to:string, value:number) => {
+    console.log({to, value})
     const hash = await nexusClient.sendTransaction({ calls:  
     [
       {
-      to : '0xf5715961C550FC497832063a98eA34673ad7C816', value: parseEther('0')}] },
+      to, value}] },
     ); 
     console.log("Transaction hash: ", hash) 
     const receipt = await nexusClient.waitForTransactionReceipt({ hash });  
@@ -379,6 +359,10 @@ function App() {
     address: account.address,
   })
 
+  const handleInputChange = (event) => {
+    setGasslessTo(event.target.value);
+  };
+
   console.log('**scaBalance', chainId, scaAddress, scaBalance, eoaBalance)
   return (
     <>
@@ -390,27 +374,29 @@ function App() {
           owner addresses: {JSON.stringify(account.addresses)}({(Number(formatUnits((eoaBalance && eoaBalance.value) || 0, 18))).toFixed(3)} ETH)
           <br />          
         </div>
+        <div>
+          {connectors.map((connector) => {
 
-        {account.status === 'connected' && (
+          return (DEBUG || connector.name === 'Injected')  && (
+          <button
+            key={connector.uid}
+            onClick={() => connect({ connector })}
+            type="button"
+          >
+            Connect {connector.name}
+          </button>
+          )
+          }
+          )}
+
+          {account.status === 'connected' && (
           <button type="button" onClick={() => disconnect()}>
             Disconnect
           </button>
-        )}
-        <div>
-          <h5>Connect</h5>
-          {connectors.map((connector) => (
-            <button
-              key={connector.uid}
-              onClick={() => connect({ connector })}
-              type="button"
-            >
-              {connector.name}
-            </button>
-          ))}
-          <div>{status}</div>
-          <div>{error?.message}</div>
+          )}
         </div>
-
+        <div>{DEBUG && status}</div>
+        <div>{error?.message}</div>
         <div>
         <button type="button" onClick={() => {
           bridge(quote, relayer, walletClient, [refetchEoaBalance, refetchScaBalance])
@@ -423,21 +409,27 @@ function App() {
         <h2>NameChain (Base Sepolia)</h2>
         <div>
           sca addresses: {scaAddress} ({(Number(formatUnits((scaBalance && scaBalance.value) || 0, 18)).toFixed(3))}ETH)
-          <br />
-          session owner: {sessionOwner && sessionOwner.address}
-          <br />
-          session module: {sessionIsInstalled ? "yes" : "no" }
+          {DEBUG && (
+            <span>
+              <br />
+              session owner: {sessionOwner && sessionOwner.address}
+              <br />
+              session module: {sessionIsInstalled ? "yes" : "no" }
+            </span>
+          )}
         </div>
 
       </div>
-
       <div>
         {DEBUG && (
           <div>
             <h2>Gasless Transaction</h2>
-            <button
-              onClick={handleGaslessTransaction}
-            >
+            <input
+              onChange={handleInputChange}
+            ></input>
+            <button onClick={() => {
+              handleGaslessTransaction(gasslessTo, scaBalance.value)
+            }}>            
               Send Gasless transaction
             </button>
             <br/>
