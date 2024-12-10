@@ -369,13 +369,13 @@ function App() {
       <div>
         <h2>EOA {account && account.chain && `(${account.chain.name})`}</h2>
         <div>
-          status: {account.status}
-          <br />
-          owner addresses: {JSON.stringify(account.addresses)}({(Number(formatUnits((eoaBalance && eoaBalance.value) || 0, 18))).toFixed(3)} ETH)
+          {DEBUG && (<div>status: {account.status}</div>)}
+          
+          owner addresses: {JSON.stringify(account.addresses)}(<span style={{ color: 'green', fontWeight: 'bold' }} >{(Number(formatUnits((eoaBalance && eoaBalance.value) || 0, 18))).toFixed(3)} ETH</span>)
           <br />          
         </div>
         <div>
-          {connectors.map((connector) => {
+          {account.status !== 'connected' && connectors.map((connector) => {
 
           return (DEBUG || connector.name === 'Injected')  && (
           <button
@@ -383,7 +383,7 @@ function App() {
             onClick={() => connect({ connector })}
             type="button"
           >
-            Connect {connector.name}
+            Connect {connector.name} wallet
           </button>
           )
           }
@@ -398,6 +398,7 @@ function App() {
         <div>{DEBUG && status}</div>
         <div>{error?.message}</div>
         <div>
+        <h2>Cross chain action</h2>
         <button type="button" onClick={() => {
           bridge(quote, relayer, walletClient, [refetchEoaBalance, refetchScaBalance])
         }}>
@@ -408,7 +409,7 @@ function App() {
 
         <h2>NameChain (Base Sepolia)</h2>
         <div>
-          sca addresses: {scaAddress} ({(Number(formatUnits((scaBalance && scaBalance.value) || 0, 18)).toFixed(3))}ETH)
+          sca addresses: {scaAddress} (<span style={{ color: 'green', fontWeight: 'bold' }}>{(Number(formatUnits((scaBalance && scaBalance.value) || 0, 18)).toFixed(3))}ETH</span>)
           {DEBUG && (
             <span>
               <br />
@@ -435,18 +436,19 @@ function App() {
             <br/>
           </div>
         )}
-        <h2>Smart Session</h2>
+        <h2>Smart Session (with signature)</h2>
         <button type="button" onClick={() => {
           installSessionModule(nexusClient, account)
         }}>
-          Install Session Module
+          Enable smart session
         </button>
         <button type="button" onClick={() => {
           createSmartSession(nexusClient, nexusSessionClient, sessionOwner)
         }}>
-          Create Smart Session
+          Grant permissions
         </button>
         <br/>
+        <h2>Onchain transactions (no signature)</h2>
         <button type="button" onClick={() => {
           executeSmartSession(sessionData, 'commit', sessionOwner)
         }}>
@@ -464,7 +466,7 @@ function App() {
         </button>
       </div>
       <div>
-      <h5>Txs</h5>
+      <h2>Txs</h2>
           <ul>
             {
               bridgeTxhashes.map(tx => {
