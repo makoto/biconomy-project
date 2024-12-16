@@ -371,7 +371,7 @@ function App() {
         <div>
           {DEBUG && (<div>status: {account.status}</div>)}
           
-          owner addresses: {JSON.stringify(account.addresses)}(<span style={{ color: 'green', fontWeight: 'bold' }} >{(Number(formatUnits((eoaBalance && eoaBalance.value) || 0, 18))).toFixed(3)} ETH</span>)
+          owner addresses: {JSON.stringify(account.addresses)}(<span style={{ color: 'green', fontWeight: 'bold' }} >{(Number(formatUnits((eoaBalance && eoaBalance.value) || 0, 18))).toFixed(5)} ETH</span>)
           <br />          
         </div>
         <div>
@@ -409,7 +409,7 @@ function App() {
 
         <h2>NameChain (Base Sepolia)</h2>
         <div>
-          sca addresses: {scaAddress} (<span style={{ color: 'green', fontWeight: 'bold' }}>{(Number(formatUnits((scaBalance && scaBalance.value) || 0, 18)).toFixed(3))}ETH</span>)
+          sca addresses: {scaAddress} (<span style={{ color: 'green', fontWeight: 'bold' }}>{(Number(formatUnits((scaBalance && scaBalance.value) || 0, 18)).toFixed(5))}ETH</span>)
           {DEBUG && (
             <span>
               <br />
